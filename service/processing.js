@@ -1950,7 +1950,7 @@ try{
                       console.log(`子进程使用代码 ${code} 退出`);
                       if(code!=0){
                           let msg={code:-2,message:'processing methods error'}
-                          res.send(msg);
+                          res.end(JSON.stringify(msg));
                           return
                       }
                       fs.readdir(output,(err,f_item)=>{
@@ -2087,6 +2087,11 @@ try{
                   var stream = fs.createWriteStream(path.join(dirPath, "test"));
                   //下载文件
                   request(url,function(err,response, body){
+                    if(err){
+                      let msg={code:-2,message:err}
+                          res.send(msg);
+                          return
+                    }
                     try{
                       console.log(response.headers['content-disposition']);
                       var arr = response.headers['content-disposition'].split('.');
