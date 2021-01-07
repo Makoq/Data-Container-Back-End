@@ -2083,12 +2083,19 @@ exports.invokeProUrls = function(req,res,next){
               var stream = fs.createWriteStream(path.join(dirPath, "test"));
               //下载文件
               request(url,function(err,response, body){
+                try{
                   console.log(response.headers['content-disposition']);
                   var arr = response.headers['content-disposition'].split('.');
                   fileType = arr[arr.length-1];
                   arr = response.headers['content-disposition'].split('=');
                   fileName = arr[arr.length-1];
                   console.log("fileType: " + fileType + " fileName: " + fileName);
+                }catch(err){
+                  let msg={code:-2,message:err}
+                      res.send(msg);
+                      return
+                }
+                
               }).pipe(stream).on('close', ()=>{
                   console.log(fileName + 'download ok');
                   //修改文件名称
@@ -2140,7 +2147,7 @@ function requestFromDC(url,dirPath){
     let stream = fs.createWriteStream(dirPath);
     request(url).pipe(stream).on("close", function (err) {
         
-          
+
         console.log("文件[" + fileName + "]下载完毕");
 
 
