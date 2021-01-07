@@ -1906,7 +1906,11 @@ try{
               let py_script_path=undefined
               let py_script_dir=undefined
               let py_script=undefined
-
+            if(!doc){
+              let msg={code:-2,message:'processing methods error'}
+                          res.send(msg);
+                          return
+            }
               for(let it of doc.list){
                   if(it.id==req.body.pcsId){
                       py_script_dir=it.storagePath
