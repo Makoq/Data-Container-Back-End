@@ -103,6 +103,8 @@ exports.bindProcessing=processing.bindProcessing
 //执行数据处理方法
 exports.executePrcs=processing.executePrcs
 
+exports.invokeExternalUrlsDataPcs=processing.invokeExternalUrlsDataPcs
+
 exports.chsdtne=processing.chsdtne;
 exports.lcalpcsmeta=processing.lcalpcsmeta
 

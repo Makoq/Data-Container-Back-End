@@ -29,8 +29,9 @@ const axios = require("axios");
  
 const WebSocket = require('ws'); 
 const getSize = require('get-folder-size');
+const { reject } = require("bluebird");
 // const { try } = require("bluebird");
- 
+const my_dataContainer='http://221.226.60.2:8082/'
 
 exports.newProcessing = function (req, res, next) {
   let script_uid = uuid.v4();
@@ -872,6 +873,11 @@ exports.exeWithOtherData = function (req, res, next) {
   //返回数据下载id
   promise.then(
     function (fileInfo) {
+      if(!fileInfo){
+        let msg = { code: -2, message: "processing methods error" };
+                    res.send(msg);
+                    return;
+      }
       console.log(fileInfo.dist);
 
       //判断是否是zip数据，还是单文件数据，因为外部数据源有者两种情况
@@ -885,7 +891,11 @@ exports.exeWithOtherData = function (req, res, next) {
               let py_script_path = undefined;
               let py_script_dir = undefined;
               let py_script = undefined;
-
+              if(!doc){
+                let msg = { code: -2, message: "processing methods error" };
+                    res.send(msg);
+                    return;
+              }
               for (let it of doc.list) {
                 if (it.id == req.query.pcsId) {
                   py_script_dir = it.storagePath;
@@ -1082,7 +1092,11 @@ exports.exeWithOtherData = function (req, res, next) {
                 let py_script_path = undefined;
                 let py_script_dir = undefined;
                 let py_script = undefined;
-
+                if(!doc){
+                  let msg = { code: -2, message: "processing methods error" };
+                    res.send(msg);
+                    return;
+                }
                 for (let it of doc.list) {
                   if (it.id == req.query.pcsId) {
                     py_script_dir = it.storagePath;
@@ -1459,6 +1473,11 @@ exports.invokeProUrl = function (req, res, next) {
     var stream = fs.createWriteStream(path.join(dirPath, "test"));
     //下载文件
     request(url, function (err, response, body) {
+      if(!response){
+        let msg = { code: -2, message: "processing methods error" };
+                    res.send(msg);
+                    return;
+      }
       console.log(response.headers["content-disposition"]);
       var arr = response.headers["content-disposition"].split(".");
       fileType = arr[arr.length - 1];
@@ -2087,6 +2106,51 @@ exports.invokeProUrls = function(req,res,next){
       }
        
 }
+
+// 执行外部数据
+exports.invokeExternalUrlsDataPcs=function(req,res,next){
+
+  let urls=JSON.parse(req.body.ExternalUrls)
+  let pid=req.body.pcsId
+  let params=req.body.params
+  let dirPath=__dirname+'/../urlFile/'+uuid.v4()
+  fs.mkdir(dirPath,()=>{
+
+    downLoadExternalUrls(urls,dirPath)
+
+  })
+
+
+}
+
+async function downLoadExternalUrls(urls,dirPath){
+
+  for(let name in urls){
+      await requestFromDC(urls[name],dirPath)
+  }
+
+
+
+}
+
+function requestFromDC(url,dirPath){
+
+  return new Promise((resove,reject)=>{
+
+    let stream = fs.createWriteStream(dirPath);
+    request(url).pipe(stream).on("close", function (err) {
+        
+          
+        console.log("文件[" + fileName + "]下载完毕");
+
+
+    });
+   
+  })
+
+}
+
+
 
 exports.visualResultHtml = function (req, res, next) {
   let htmlPath = req.query.path;
