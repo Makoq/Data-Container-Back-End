@@ -7,7 +7,8 @@ var Mixed = mongoose.mongoose.Schema.Types.Mixed;
 
 //定义schema,相当于定义表结构
 var dataSChema= new mongoose.mongoose.Schema({
-             serviceId:String,
+            recordId:String,
+            serviceId:String,
             date:String,
             input:Array,
             output:Array
@@ -22,7 +23,7 @@ var dataSChema= new mongoose.mongoose.Schema({
 
 //创建model
  
-var workSpace=DB.DB1.model('record',dataSChema)
+var record=DB.DB1.model('record',dataSChema)
 
 // workSpace.find({},(err,doc)=>{
 //     if(doc.length===0){

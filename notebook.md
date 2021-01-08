@@ -30,4 +30,9 @@ http://111.229.14.128.:8898/invokeDistributedPcs?token=LhDgkD%2Bcn0q3xkI6Z6QRHg%
 http://111.229.14.128.:8898/invokeDistributedPcs?token=LhDgkD%2Bcn0q3xkI6Z6QRHg%3D%3D&pcsId=c1e0b4c3-4c60-495a-afad-589f94a47d27&contDtId=04ac72a6-65fb-4432-a130-00bf74ae0296&params
 
 
+## 查库
+查到每一个instance,返回值是只含有一个元素的list数组
+
+   db.instances.findOne({list:{$elemMatch:{id:"60cd09a3-cd57-490f-9f51-7105bd283786"}}},{list:{$elemMatch:{"id":"60cd09a3-cd57-490f-9f51-7105bd283786"}}})
+
 

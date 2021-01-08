@@ -6,6 +6,8 @@ const fsPromises = fs.promises;
 const FormData = require("form-data");
 var path = require("path");
 const { instances } = require("../model/instances");
+const { record } = require("../model/runRecord");
+
 const request = require("request");
 const Request = require("request");
 
@@ -30,6 +32,7 @@ const axios = require("axios");
 const WebSocket = require('ws'); 
 const getSize = require('get-folder-size');
 const { reject } = require("bluebird");
+const { Recoverable } = require("repl");
 // const { try } = require("bluebird");
 const my_dataContainer='http://221.226.60.2:8082/'
 
@@ -339,8 +342,8 @@ exports.executePrcs = function (req, res, next) {
           console.log(`子进程使用代码 ${code} 退出`);
           if (code != 0) {
             let msg = { code: -2, message: "processing methods error" };
-            res.send(msg);
-            return;
+            res.end(JSON.stringify(msg));
+                          return
           }
           fs.readdir(output, (err, f_item) => {
             if (f_item.length == 0) {
@@ -348,8 +351,8 @@ exports.executePrcs = function (req, res, next) {
               if (pcs_stout != undefined) {
                 msg.message = pcs_stout.toString("utf-8");
               }
-              res.send(msg);
-              return;
+              res.end(JSON.stringify(msg));
+                          return
             }
             let bk_html = undefined;
             for (let f of f_item) {
@@ -939,8 +942,8 @@ exports.exeWithOtherData = function (req, res, next) {
                   console.log(`子进程使用代码 ${code} 退出`);
                   if (code != 0) {
                     let msg = { code: -2, message: "processing methods error" };
-                    res.send(msg);
-                    return;
+                    res.end(JSON.stringify(msg));
+                    return
                   }
                   fs.readdir(output, (err, f_item) => {
                     if (f_item.length == 0) {
@@ -951,8 +954,8 @@ exports.exeWithOtherData = function (req, res, next) {
                       if (pcs_stout != undefined) {
                         msg.message = pcs_stout.toString("utf-8");
                       }
-                      res.send(msg);
-                      return;
+                      res.end(JSON.stringify(msg));
+                          return
                     }
 
                     let upObj = {
@@ -1036,7 +1039,7 @@ exports.exeWithOtherData = function (req, res, next) {
 
                         let r = JSON.parse(v.body);
                         if (r.code == -1) {
-                          res.send({ code: -2, message: v.msg });
+                          res.end(JSON.stringify({ code: -2, message: v.msg }));
                           return;
                         } else {
                           console.log(
@@ -1143,8 +1146,8 @@ exports.exeWithOtherData = function (req, res, next) {
                         code: -2,
                         message: "processing methods error",
                       };
-                      res.send(msg);
-                      return;
+                      res.end(JSON.stringify(msg));
+                          return
                     }
                     fs.readdir(output, (err, f_item) => {
                       if (f_item.length == 0) {
@@ -1551,8 +1554,8 @@ exports.invokeProUrl = function (req, res, next) {
                   console.log(`子进程使用代码 ${code} 退出`);
                   if (code != 0) {
                     let msg = { code: -2, message: "processing methods error" };
-                    res.send(msg);
-                    return;
+                    res.end(JSON.stringify(msg));
+                          return
                   }
                   fs.readdir(output, (err, f_item) => {
                     if (f_item.length == 0) {
@@ -1732,8 +1735,8 @@ exports.invokeProUrl = function (req, res, next) {
               console.log(`子进程使用代码 ${code} 退出`);
               if (code != 0) {
                 let msg = { code: -2, message: "processing methods error" };
-                res.send(msg);
-                return;
+                res.end(JSON.stringify(msg));
+                          return
               }
               fs.readdir(output, (err, f_item) => {
                 if (f_item.length == 0) {
@@ -2088,10 +2091,11 @@ try{
                   //下载文件
                   request(url,function(err,response, body){
                     if(err){
-                      let msg={code:-2,message:err}
-                          res.send(msg);
-                          return
+                      let msg={code:-2,stoutErr:err}
+                      res.end(JSON.stringify(msg));
+                      return
                     }
+                    
                     try{
                       console.log(response.headers['content-disposition']);
                       var arr = response.headers['content-disposition'].split('.');
@@ -2136,34 +2140,225 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
   let dirPath=__dirname+'/../urlFile/'+uuid.v4()
   fs.mkdir(dirPath,()=>{
 
-    downLoadExternalUrls(urls,dirPath)
+    let namePath=downLoadExternalUrls(urls,dirPath)
+    let recordIdForThisRun=uuid.v4()
+    namePath.then(v=>{
 
+      // 格式化一下输出
+      let o=[]
+      for(let i of v){
+        for(let k in i){
+          o.push({
+            'name':k,
+            'path':i[k]
+          })
+        }
+      }
+      record.create({
+        "recordId":recordIdForThisRun,
+        "serviceId":pid,
+        "date":utils.formatDate(new Date()),
+        "input":o,
+        "output":[]
+      },(err,doc)=>{
+        if(err){
+          console.log(err)
+        }
+      })
+
+      instances.findOne({list:{$elemMatch:{id:pid}}},{list:{$elemMatch:{id:pid}}},(err,instanceDoc)=>{
+       
+          if(err||!instanceDoc){
+            let msg={code:-2,stoutErr:'find in node db error'}
+            res.end(JSON.stringify(msg));
+            return
+          }
+
+          if(instanceDoc.list.length<1){
+            let msg={code:-2,stoutErr:'find in node db error'}
+            res.end(JSON.stringify(msg));
+            return
+          }
+ 
+            let pcs=instanceDoc.list[0]
+            let pyPath=path.join(pcs.storagePath,pcs.fileList[0].split('.')[1]=='py'?pcs.fileList[0]:pcs.fileList[1])
+            // TODO: 调用子进程参数配置
+            let output=__dirname+'/../processing_result/'+uuid.v4()
+            
+            fs.mkdirSync(output)
+
+            let input 
+            let arrPath=[]
+            for(let p of v){
+              for(let k in p){
+                arrPath.push(p[k])
+              }
+            }
+
+            
+            input = arrPath.join()
+            
+            let par= [ pyPath,input,path.normalize(output)]
+            //将参数数组填入
+            if(req.body.params&&req.body.params!=''){
+                let r=req.body.params.split(',')
+                r.forEach(v=>{
+                    par.push(v)
+                })
+            }
+            let pcs_stout=undefined
+            const ls = cp.spawn(cfg.pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
+
+            // 'd:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.shp,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.dbf,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.shx,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.prj'
+            ls.on('exit', (code) => {
+              console.log(`子进程使用代码 ${code} 退出`);
+              if(code!=0){
+                  let msg={code:-2,message:'processing methods error'}
+                  res.end(JSON.stringify(msg));
+                  return
+              }
+              fs.readdir(output,(err,f_item)=>{
+  
+                  if(f_item.length==0){
+                      let msg={code:-2,message:'processing methods error'}
+                      if( pcs_stout!=undefined){
+                          msg.message=pcs_stout.toString('utf-8')
+                      }
+                      res.end(msg);
+                      return
+                  }
+              
+                  let upObj={
+                    'name':pid,
+                    'datafile':[]
+                  }
+                  let outputDist=[]
+                  f_item.forEach((outfile,i)=>{
+                    upObj['datafile'].push(fs.createReadStream(path.join(output,outfile)))
+                    outputDist.push({'name':outfile,'path':path.join(output,outfile)})
+                  })
+                  
+                  
+                  let options = {
+                      method : 'POST',
+                      url : my_dataContainer+'/data',
+                      headers : { 'Content-Type' : 'multipart/form-data' },
+                      formData : upObj
+                  };
+                  //调用数据容器上传接口
+                  let promise= new Promise((resolve, reject) => {
+                      let readStream = Request(options, (error, response, body) => {
+                          if (!error) {
+                              resolve({response, body})
+                          } else {
+                              reject(error);
+                          }
+                      });
+                  });
+                  //返回数据下载id
+                  promise.then(function(dataRsp){
+                      //删除配置文件
+                     
+                      // 删除原始文件
+                      // utils.delDir(dirPath);
+
+                      // 删除处理数据
+                      // utils.delDir(output)//数据处理输出文件夹
+                      // fs.unlinkSync(fileInfo.dist)//下载的外部数据文件
+                      // utils.delDir(input)//解压后的外部数据文件夹
+  
+                      record.updateOne({recordId:recordIdForThisRun},{$set:{output:outputDist}},(err,re=>{
+                            if(err){
+                              res.end({code:-2,message:err.toString('utf-8')});
+                              return
+                            }
+                            let r=JSON.parse(dataRsp.body)
+                            if(r.code==-1){
+                                res.send({code:-2,message:r.message});
+                                return
+                            }else{
+                                console.log('process method',pid)
+                                if(pcs_stout==undefined){
+                                    pcs_stout="no print message"
+                                }
+                                res.send({code:0,uid:r.data.id,stout:pcs_stout.toString('utf-8')})
+                                return
+                            }
+
+                      }))
+                  
+                  },(rej_err)=>{
+                      console.log(rej_err)
+                  })
+                  
+  
+  
+              })
+          
+  
+            });
+
+            ls.on('error',(err)=>{
+              console.log(`错误 ${err}`);
+              res.send({code:-2,message:(err).toString()});
+              return;
+            })
+            ls.on('close', (code) => {//exit之后
+                console.log(`子进程close，退出码 ${code}`);
+                
+            });
+            ls.stdout.on('data', (data) => {
+                console.log(`stdout: ${data}`);
+                pcs_stout=data
+                                    
+            })
+
+      })
+
+    })
   })
 
 
 }
 
 async function downLoadExternalUrls(urls,dirPath){
-
+  let path=[]
   for(let name in urls){
-      await requestFromDC(urls[name],dirPath)
+      let p=await requestFromDC(urls[name],dirPath)
+      let tp={}
+      tp[name]=p
+      path.push(tp)
   }
-
-
+  return path
 
 }
-
+// 数据都来自
 function requestFromDC(url,dirPath){
 
   return new Promise((resove,reject)=>{
+    let uid=uuid.v4()
+    let stream = fs.createWriteStream(path.join(dirPath,uid));
+    let fileName
+    request(url,(err,resp,body)=>{
 
-    let stream = fs.createWriteStream(dirPath);
-    request(url).pipe(stream).on("close", function (err) {
-        
-
-        console.log("文件[" + fileName + "]下载完毕");
-
-
+      if(err){
+        let msg={code:-2,stoutErr:err}
+        res.end(JSON.stringify(msg));
+        return
+      }else
+      if(resp.statusCode!=200){
+        let msg={code:-2,stoutErr:'datacontainer error'}
+        res.end(JSON.stringify(msg));
+        return
+      }
+      let Disposition=resp.headers['content-disposition'].split(';')
+      fileName=Disposition[1].split('=')[1]
+    }).pipe(stream).on("close", function (err) {
+      if(err){
+        reject(err)
+      }
+      fs.renameSync(path.join(dirPath,uid),path.join(dirPath,fileName));
+        resove(path.join(dirPath,fileName))
     });
    
   })
