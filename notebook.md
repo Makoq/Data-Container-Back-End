@@ -36,3 +36,22 @@ http://111.229.14.128.:8898/invokeDistributedPcs?token=LhDgkD%2Bcn0q3xkI6Z6QRHg%
    db.instances.findOne({list:{$elemMatch:{id:"60cd09a3-cd57-490f-9f51-7105bd283786"}}},{list:{$elemMatch:{"id":"60cd09a3-cd57-490f-9f51-7105bd283786"}}})
 
 
+ 
+TODO
+需要输入，而且没有绑定
+URLs 可用
+
+
+不需要输入，而且没有绑定
+URLs 改
+
+
+需要输入，而且没有绑定
+URLS 可用
+
+不需要输入，而且没有绑定
+改 放开绑定测试数据 extPcs
+
+
+
+

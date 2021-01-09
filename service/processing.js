@@ -1891,7 +1891,10 @@ try{
       var fileType;
       var fileName;
       // form.parse(req, (err, fields, files) =>{
-        let urls = [];
+      
+      
+      
+      let urls = [];
       if(req.body.urls.indexOf(',')>0){
         urls = req.body.urls.split(',');//此时为一个数组
       }else{
@@ -2144,21 +2147,12 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
     let recordIdForThisRun=uuid.v4()
     namePath.then(v=>{
 
-      // 格式化一下输出
-      let o=[]
-      for(let i of v){
-        for(let k in i){
-          o.push({
-            'name':k,
-            'path':i[k]
-          })
-        }
-      }
+      
       record.create({
         "recordId":recordIdForThisRun,
         "serviceId":pid,
         "date":utils.formatDate(new Date()),
-        "input":o,
+        "input":v,
         "output":[]
       },(err,doc)=>{
         if(err){
@@ -2189,10 +2183,19 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
 
             let input 
             let arrPath=[]
-            for(let p of v){
-              for(let k in p){
-                arrPath.push(p[k])
-              }
+            if(pcs.metaDetailJSON==undefined){
+              let msg={code:-2,stoutErr:'find in node db error'}
+              res.end(JSON.stringify(msg));
+              return
+            }
+            for(let inp of pcs.metaDetailJSON.Input){
+              for(let p of v){
+                if(inp.name==p.name){
+                  arrPath.push(p.path)
+                  break
+                }
+              }   
+           
             }
 
             
@@ -2290,11 +2293,7 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
                   },(rej_err)=>{
                       console.log(rej_err)
                   })
-                  
-  
-  
               })
-          
   
             });
 
@@ -2325,9 +2324,8 @@ async function downLoadExternalUrls(urls,dirPath){
   let path=[]
   for(let name in urls){
       let p=await requestFromDC(urls[name],dirPath)
-      let tp={}
-      tp[name]=p
-      path.push(tp)
+     
+      path.push(p)
   }
   return path
 
@@ -2358,7 +2356,7 @@ function requestFromDC(url,dirPath){
         reject(err)
       }
       fs.renameSync(path.join(dirPath,uid),path.join(dirPath,fileName));
-        resove(path.join(dirPath,fileName))
+        resove({name:fileName,path:path.join(dirPath,fileName)})
     });
    
   })
