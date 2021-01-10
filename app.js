@@ -208,6 +208,9 @@ app.post('/invokeProUrl', router.invokeProUrl);
 app.post('/invokeProUrls', router.invokeProUrls);
 app.post('/invokeExternalUrlsDataPcs', router.invokeExternalUrlsDataPcs);
 
+app.post('/invokeExternalUrlsDataPcsWithKeys',jsonParser,router.invokeExternalUrlsDataPcsWithKeys);
+
+
 // 元数据描述
 app.get('/capability',router.capability)
 

@@ -96,6 +96,9 @@ exports.multiFiles=transition.multiFiles
 
 //new processing method
 exports.newProcessing=processing.newProcessing
+exports.invokeExternalUrlsDataPcsWithKeys=processing.invokeExternalUrlsDataPcsWithKeys
+
+
 //删除处理方法
 exports.delProcessing=processing.delProcessing
 //绑定处理方法 executePrcs
