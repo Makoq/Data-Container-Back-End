@@ -491,6 +491,7 @@ exports.capability=function(req,res,next){
                     obj['name']=el.name
                     obj['date']=el.date
                     obj['description']=el.description
+                    obj['dataTemplateOid']=el.dataTemplateOid!=undefined?el.dataTemplateOid:null
                     obj['paramsCount']=el.paramsCount!=undefined?el.paramsCount:undefined
                     obj['metaDetail']=el.metaDetail!=undefined?JSON.parse(el.metaDetail):undefined
                     

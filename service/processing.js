@@ -61,6 +61,7 @@ exports.newProcessing = function (req, res, next) {
       let newFile = {
         id: fields.id,
         oid: fields.oid,
+        dataTemplateOid:fields.dataTemplateOid,
         name: fields.name,
         date: fields.date,
         type: fields.type,
@@ -99,7 +100,9 @@ exports.newProcessing = function (req, res, next) {
             });
             fs.readFile(xmlPath, function (err, data) {
               parser.parseString(data, function (err, result) {
+                try{
 
+                
                 let formatJson={}
                 formatJson['Description']=result['Method']['Description']
 
@@ -151,10 +154,13 @@ exports.newProcessing = function (req, res, next) {
                         }
                         formatJson['Parameter']=Parameter
                 }
-               
+              
                 newFile["metaDetail"] = JSON.stringify(result);
                 newFile["metaDetailJSON"]=formatJson;
-
+              }catch(err){
+                res.send({ code: -1, message: "DDL error!" });
+                return;
+              }
                 doc.list.unshift(newFile);
 
                 instances.updateOne(query, doc, (update_err) => {
