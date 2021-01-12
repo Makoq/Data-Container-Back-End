@@ -2243,13 +2243,18 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                               res.send(msg);
                               return
                 }
+                let template={}
+                template['dataTemplateId']=''
                   for(let it of doc.list){
                       if(it.id==req.body.pcsId){
                           py_script_dir=it.storagePath
                           py_script= it.fileList[0].split('.')[1]=='py'?it.fileList[0]:it.fileList[1]
+                          template['dataTemplateId']=it.dataTemplateOid!=undefined?it.dataTemplateOid:undefined
+
                           break
                       }
                   }
+                  
                   py_script_path=py_script_dir+'/'+py_script
                   //输入输出路径指定
                   let input = path.normalize(dirPath);
@@ -2420,7 +2425,8 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                                   //     res.send({code:0,uid:r.data.source_store_id,stout:pcs_stout.toString('utf-8')})
                                   //     return
                                   // }
-
+                                  
+                                  v.push(template)
                                       console.log('process method',v)
                                       if(pcs_stout==undefined){
                                           pcs_stout="no print message"
