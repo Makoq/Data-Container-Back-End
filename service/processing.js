@@ -1975,7 +1975,7 @@ try{
                               res.send(msg);
                               return
                           }
-                      
+                          uploadFiles
                           let upObj={
                               'name':"test",
                               'userId':req.body.token,
@@ -2140,7 +2140,56 @@ try{
     }
 }
 
+async function uploadFiles(filePath,files){
 
+  let arr=[]
+
+  for(let file of files){
+      let tp=filePath+'/'+file;
+      let name=file.split('.')[0]
+      let {data}=await uploadMultifiles(tp,name);
+      
+      data.file_name=file
+      arr.push(data)
+  }
+  return arr
+}
+
+function uploadMultifiles(path,name){
+  let options
+  try{
+      let upObj={
+          'name':name,
+          'datafile':fs.createReadStream(path)        
+      }
+      // TODO: 大文件数据上传
+      options = {
+          method : 'POST',
+          url : my_dataContainer+'/data',
+          formData : upObj
+      };
+
+      }catch(err){
+          let msg={code:-2,id:req.query.id,stoutErr:'file invalid'}
+          res.send(msg)
+          return
+      }
+      //调用数据容器上传接口
+      let promise= new Promise((resolve, reject) => {
+          let readStream = Request(options, (error, response, body) => {
+              if (!error) {
+                  
+                  resolve(JSON.parse(body))
+              } else {
+                  reject(error);
+              }
+          });
+      });
+
+      return promise
+    
+
+}
 exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
     let uid = uuid.v4();
     console.log(req.body);
@@ -2221,7 +2270,7 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                       let par= [ py_script_path,input,output]
                       //将参数数组填入
                        
-                      if(req.body.params.length>0){
+                      if(req.body.params&&req.body.params.length>0){
                         par=par.concat(req.body.params)
                       }
                       let pcs_stout=undefined
@@ -2235,6 +2284,7 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                               return
                           }
                           fs.readdir(output,(err,f_item)=>{
+                            let re=uploadFiles(output,f_item)
 
                               if(f_item.length==0){
                                   let msg={code:-2,message:'processing methods error'}
@@ -2245,105 +2295,144 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                                   return
                               }
                           
-                              let upObj={
-                                  'name':"test",
-                                  'userId':req.body.token,
-                                  'origination':'distributedContainer',
-                                  'serverNode':'china',
-                                  'ogmsdata':[]        
-                              }
-                              f_item.forEach(v=>{
-                                  upObj['ogmsdata'].push(fs.createReadStream(output+'/'+v))
-                              })
-                              let dataType=undefined
-                              f_item.forEach(v=>{
-                                  if(v.split(".")[1]==="shp"){
-                                      dataType='shp'
-                                  }else if(v.split(".")[1]==="tif"||v.split(".")[1]==="tiff"){
-                                      dataType='tiff'
-                                  }
+                              // let upObj={
+                              //     'name':"test",
+                              //     'userId':req.body.token,
+                              //     'origination':'distributedContainer',
+                              //     'serverNode':'china',
+                              //     'ogmsdata':[]        
+                              // }
+                              // f_item.forEach(v=>{
+                              //     upObj['ogmsdata'].push(fs.createReadStream(output+'/'+v))
+                              // })
+                              // let dataType=undefined
+                              // f_item.forEach(v=>{
+                              //     if(v.split(".")[1]==="shp"){
+                              //         dataType='shp'
+                              //     }else if(v.split(".")[1]==="tif"||v.split(".")[1]==="tiff"){
+                              //         dataType='tiff'
+                              //     }
 
-                              })
-                              //拼接配置文件
-                              let udxcfg=cfg.configUdxCfg[0]+'\n'+cfg.configUdxCfg[1]+'\n'
-                              for(let i=0;i<f_item.length;i++){
-                                  udxcfg+=cfg.configUdxCfg[2]+'\n'
-                              }
-                              udxcfg+=cfg.configUdxCfg[3]+'\n'
-                              udxcfg+=cfg.configUdxCfg[4]+'\n'
-                              if(dataType==="shp"){
-                                  udxcfg+=templateId.shp[0]
-                              }else if(dataType=="tiff"){
-                                  udxcfg+=templateId.tiff[0]
-                              }else{
-                                  udxcfg+=templateId.shp[0]
-                              }
-                              udxcfg+=cfg.configUdxCfg[5]+'\n'
-                              udxcfg+=cfg.configUdxCfg[6]+'\n'
+                              // })
+                              // //拼接配置文件
+                              // let udxcfg=cfg.configUdxCfg[0]+'\n'+cfg.configUdxCfg[1]+'\n'
+                              // for(let i=0;i<f_item.length;i++){
+                              //     udxcfg+=cfg.configUdxCfg[2]+'\n'
+                              // }
+                              // udxcfg+=cfg.configUdxCfg[3]+'\n'
+                              // udxcfg+=cfg.configUdxCfg[4]+'\n'
+                              // if(dataType==="shp"){
+                              //     udxcfg+=templateId.shp[0]
+                              // }else if(dataType=="tiff"){
+                              //     udxcfg+=templateId.tiff[0]
+                              // }else{
+                              //     udxcfg+=templateId.shp[0]
+                              // }
+                              // udxcfg+=cfg.configUdxCfg[5]+'\n'
+                              // udxcfg+=cfg.configUdxCfg[6]+'\n'
 
 
 
-                              fs.writeFileSync(output+'/config.udxcfg',udxcfg)
+                              // fs.writeFileSync(output+'/config.udxcfg',udxcfg)
 
-                              upObj['ogmsdata'].push(fs.createReadStream(output+'/config.udxcfg')) 
+                              // upObj['ogmsdata'].push(fs.createReadStream(output+'/config.udxcfg')) 
 
                               
-                              let options = {
-                                  method : 'POST',
-                                  url : transitUrl+'/data',
-                                  headers : { 'Content-Type' : 'multipart/form-data' },
-                                  formData : upObj
-                              };
-                              //调用数据容器上传接口
-                              let promise= new Promise((resolve, reject) => {
-                                  let readStream = Request(options, (error, response, body) => {
-                                      if (!error) {
+                              // let options = {
+                              //     method : 'POST',
+                              //     url : transitUrl+'/data',
+                              //     headers : { 'Content-Type' : 'multipart/form-data' },
+                              //     formData : upObj
+                              // };
+                              // //调用数据容器上传接口
+                              // let promise= new Promise((resolve, reject) => {
+                              //     let readStream = Request(options, (error, response, body) => {
+                              //         if (!error) {
                                           
-                                          resolve({response, body})
-                                      } else {
-                                          reject(error);
-                                      }
-                                  });
-                              });
+                              //             resolve({response, body})
+                              //         } else {
+                              //             reject(error);
+                              //         }
+                              //     });
+                              // });
                               //返回数据下载id
-                              promise.then(function(v){
-                                  //删除配置文件
-                                  fs.unlinkSync(output+'/config.udxcfg',udxcfg)
-                                  utils.delDir(dirPath);
-                                  // 删除处理数据
-                                  // utils.delDir(output)//数据处理输出文件夹
-                                  // fs.unlinkSync(fileInfo.dist)//下载的外部数据文件
-                                  // utils.delDir(input)//解压后的外部数据文件夹
-                                  let outputDist=[]
-                                  f_item.forEach((outfile,i)=>{
+                              // promise.then(function(v){
+                              //     //删除配置文件
+                              //     fs.unlinkSync(output+'/config.udxcfg',udxcfg)
+                              //     utils.delDir(dirPath);
+                              //     // 删除处理数据
+                              //     // utils.delDir(output)//数据处理输出文件夹
+                              //     // fs.unlinkSync(fileInfo.dist)//下载的外部数据文件
+                              //     // utils.delDir(input)//解压后的外部数据文件夹
+                              //     let outputDist=[]
+                              //     f_item.forEach((outfile,i)=>{
                                     
-                                    outputDist.push({'name':outfile,'path':path.join(output,outfile)})
-                                  })
-                                  record.updateOne({recordId:recordIdForThisRun},{$set:{output:outputDist}},(err,re=>{
+                              //       outputDist.push({'name':outfile,'path':path.join(output,outfile)})
+                              //     })
+                              //     record.updateOne({recordId:recordIdForThisRun},{$set:{output:outputDist}},(err,re=>{
 
-                                    if(err){
-                                      res.end({code:-2,message:err.toString('utf-8')});
-                                      return
-                                    }
-                                    let r=JSON.parse(v.body)
-                                    if(r.code==-1){
-                                        res.send({code:-2,message:v.msg});
-                                        return
-                                    }else{
-                                        console.log('process method',req.body.pcsId)
-                                        if(pcs_stout==undefined){
-                                            pcs_stout="no print message"
-                                        }
-                                        res.send({code:0,uid:r.data.source_store_id,stout:pcs_stout.toString('utf-8')})
-                                        return
-                                    }
+                              //       if(err){
+                              //         res.end({code:-2,message:err.toString('utf-8')});
+                              //         return
+                              //       }
+                              //       let r=JSON.parse(v.body)
+                              //       if(r.code==-1){
+                              //           res.send({code:-2,message:v.msg});
+                              //           return
+                              //       }else{
+                              //           console.log('process method',req.body.pcsId)
+                              //           if(pcs_stout==undefined){
+                              //               pcs_stout="no print message"
+                              //           }
+                              //           res.send({code:0,uid:r.data.source_store_id,stout:pcs_stout.toString('utf-8')})
+                              //           return
+                              //       }
 
-                                  }))
+                              //     }))
 
                                   
                               
-                              },(rej_err)=>{
-                                  console.log(rej_err)
+                              // },(rej_err)=>{
+                              //     console.log(rej_err)
+                              // })
+                              re.then(v=>{
+                                let outputDist=[]
+                                f_item.forEach((outfile,i)=>{
+                                  
+                                  outputDist.push({'name':outfile,'path':path.join(output,outfile)})
+                                })
+                                record.updateOne({recordId:recordIdForThisRun},{$set:{output:outputDist}},(err,re=>{
+
+                                  if(err){
+                                    res.end({code:-2,message:err.toString('utf-8')});
+                                    return
+                                  }
+                                  // let r=JSON.parse(v.body)
+
+                                  // if(r.code==-1){
+                                  //     res.send({code:-2,message:v.msg});
+                                  //     return
+                                  // }else{
+                                  //     console.log('process method',req.body.pcsId)
+                                  //     if(pcs_stout==undefined){
+                                  //         pcs_stout="no print message"
+                                  //     }
+                                  //     res.send({code:0,uid:r.data.source_store_id,stout:pcs_stout.toString('utf-8')})
+                                  //     return
+                                  // }
+
+                                      console.log('process method',v)
+                                      if(pcs_stout==undefined){
+                                          pcs_stout="no print message"
+                                      }
+                                      res.send({code:0,uid:v,stout:pcs_stout.toString('utf-8')})
+                                      return
+
+                                }))
+
+                              },(err)=>{
+                                res.send({code:-2,message:v.msg});
+                                      return
                               })
                               
 

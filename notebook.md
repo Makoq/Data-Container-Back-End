@@ -38,6 +38,7 @@ http://111.229.14.128.:8898/invokeDistributedPcs?token=LhDgkD%2Bcn0q3xkI6Z6QRHg%
 
  
 TODO
+
 需要输入，而且没有绑定
 URLs 可用
 
@@ -52,6 +53,12 @@ URLS 可用
 不需要输入，而且没有绑定
 改 放开绑定测试数据 extPcs
 
+
+xml修改
+
+采用新的封装方法
+
+参考mdl里Event，按索引读取input, 读入dependency
 
 
 
