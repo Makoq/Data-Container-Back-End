@@ -58,7 +58,9 @@ xml修改
 
 采用新的封装方法
 
-参考mdl里Event，按索引读取input, 读入dependency
+参考mdl里Event，按索引读取input, 读入dependency,给DDL里加节点，类似于mdl
+
+
 
 
 

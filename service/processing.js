@@ -86,6 +86,11 @@ exports.newProcessing = function (req, res, next) {
             newFile.fileList[0].split(".")[1] == "xml"
               ? newFile.fileList[0]
               : newFile.fileList[1];
+            
+          if((newFile.fileList[0].split(".")[1] == "xml"&&newFile.fileList[1].split(".")[1]== "xml" )|| (newFile.fileList[0].split(".")[1] != "xml"&&newFile.fileList[1].split(".")[1]!= "xml") ){
+            res.send({ code: -1, message: "DDL error!" });
+            return
+          }
           let xmlPath = form.uploadDir + "/" + xmlFile;
           fs.readdir(form.uploadDir, (err, filesItem) => {
             filesItem.forEach((v) => {
@@ -99,10 +104,18 @@ exports.newProcessing = function (req, res, next) {
               });
             });
             fs.readFile(xmlPath, function (err, data) {
-              parser.parseString(data, function (err, result) {
+              if(err){
+                res.send({ code: -1, message: "DDL error!" });
+                return
+              }
+              parser.parseString(data, function (err2, result) {
+                if(err2){
+                  res.send({ code: -1, message: "DDL error!" });
+                  return
+                }
+                
                 try{
 
-                
                 let formatJson={}
                 formatJson['Description']=result['Method']['Description']
 
@@ -158,7 +171,7 @@ exports.newProcessing = function (req, res, next) {
                 newFile["metaDetail"] = JSON.stringify(result);
                 newFile["metaDetailJSON"]=formatJson;
               }catch(err){
-                res.send({ code: -1, message: "DDL error!" });
+                res.end({ code: -1, message: "DDL error!" });
                 return;
               }
                 doc.list.unshift(newFile);
