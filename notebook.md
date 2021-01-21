@@ -61,6 +61,9 @@ xml修改
 参考mdl里Event，按索引读取input, 读入dependency,给DDL里加节点，类似于mdl
 
 
+2021.1.17 添加了不用绑定数据的处理和可视化类型 命名为ProcssingMethod,VisualizationProcessing
+
+
 
 
 

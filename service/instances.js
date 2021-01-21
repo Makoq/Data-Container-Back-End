@@ -207,7 +207,25 @@ exports.newFile=function(req,res,next){
         }
        
         newFile.meta.currentPath=path.normalize(dataStoragePath+'/'+newFile.id) //存到当前系统下的路径
-        console.log('path',newFile.meta.currentPath)
+        
+        fs.readdir(newFile.meta.dataPath,(err,filesItem)=>{
+            if(err){
+                res.send({code:-1,message:'new file error!'})
+                return
+            }
+            let pathArr=[]
+            filesItem.forEach(v=>{
+                let obj={}
+                obj['name']=v
+                obj['path']=newFile.meta.currentPath+'/'+v
+
+                pathArr.push(obj) 
+            })
+            newFile['currentPathFiles']=pathArr
+        })
+
+
+
         Instances.findOne(query,(find_err,doc)=>{
             if(find_err){
                 res.send({code:-1,message:'new file error!'})
@@ -512,4 +530,28 @@ exports.capability=function(req,res,next){
        
 
     })
+}
+
+//获取处理方法输入数据项
+
+exports.pcsInputFiles=function(req,res,next){
+
+    let dataId=req.query.dataId
+
+    Instances.findOne({list:{$elemMatch:{id:dataId}}},{list:{$elemMatch:{id:dataId}}},(err,pcsDoc)=>{
+        if(err){
+            res.send({
+                code:-1,
+                message:err
+            })
+            return
+        }
+        res.send({
+            code:0,
+            data:pcsDoc.list[0].currentPathFiles
+        })
+        return
+
+    })
+
 }

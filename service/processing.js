@@ -71,7 +71,7 @@ exports.newProcessing = function (req, res, next) {
         meta: fields.meta,
         fileList: fields.fileList.split(","),
         storagePath: form.uploadDir,
-        relatedData: fields.relatedData.split(","),
+        relatedData: fields.relatedData!=undefined ?fields.relatedData.split(","):undefined,
       };
       if (fields.processingPath != undefined) {
         form.uploadDir = fields.processingPath;
@@ -2665,7 +2665,7 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
                                 if(pcs_stout==undefined){
                                     pcs_stout="no print message"
                                 }
-                                res.send({code:0,uid:r.data.id,stout:pcs_stout.toString('utf-8')})
+                                res.send({code:0,uid: my_dataContainer+'/data/'+r.data.id,stout:pcs_stout.toString('utf-8')})
                                 return
                             }
 

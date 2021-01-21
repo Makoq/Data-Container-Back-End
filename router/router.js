@@ -7,6 +7,10 @@ const instances=require('../service/instances.js');
 const transition=require('../service/transition.js');
 
 const processing=require('../service/processing.js')
+const method=require('../service/method.js')
+
+
+
 const workSpace=require('../service/workSpace.js')
 
 
@@ -86,6 +90,9 @@ exports.newFile=instances.newFile
 exports.delInst=instances.delInst
 //下载
 exports.inSituDownload=instances.inSituDownload
+// 打开文件资源管理器
+exports.openExplorer=method.openExplorer
+
 //authority
 exports.authority=instances.authority
 //transit
@@ -106,12 +113,17 @@ exports.bindProcessing=processing.bindProcessing
 //执行数据处理方法
 exports.executePrcs=processing.executePrcs
 
+// 执行method类型
+exports.invokeLocalMethod=method.invokeLocalMethod;
+
 exports.invokeExternalUrlsDataPcs=processing.invokeExternalUrlsDataPcs
 
 exports.chsdtne=processing.chsdtne;
 exports.lcalpcsmeta=processing.lcalpcsmeta
 
 exports.uploadPcsMethod=processing.uploadPcsMethod
+
+exports.pcsInputFiles=instances.pcsInputFiles
 
 // 工作空间
 exports.initWorkSpace=workSpace.initWorkSpace
