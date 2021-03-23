@@ -2,7 +2,7 @@
  * @Author: lan 
  * @Date: 2021-01-21 15:12:28 
  * @Last Modified by: mikey.zhaopeng
- * @Last Modified time: 2021-01-21 17:37:28
+ * @Last Modified time: 2021-03-08 20:56:54
  */
 const path = require("path");
 const uuid = require("node-uuid");
@@ -100,15 +100,15 @@ exports.invokeLocalMethod=function(req,res,next){
                 return
             }
             fs.readdir(output,(err,f_item)=>{
-
-                if(f_item.length==0){
-                    let msg={code:-2,message:'processing methods error'}
-                    if( pcs_stout!=undefined){
-                        msg.message=pcs_stout.toString('utf-8')
-                    }
-                    res.send(msg);
-                    return
-                }
+                //可能没有输出 先注释了
+                // if(f_item.length==0){
+                //     let msg={code:-2,message:'processing methods error'}
+                //     if( pcs_stout!=undefined){
+                //         msg.message=pcs_stout.toString('utf-8')
+                //     }
+                //     res.send(msg);
+                //     return
+                // }
             
                 
                 let outputDist=[]

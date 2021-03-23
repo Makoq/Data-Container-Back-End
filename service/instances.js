@@ -208,25 +208,31 @@ exports.newFile=function(req,res,next){
        
         newFile.meta.currentPath=path.normalize(dataStoragePath+'/'+newFile.id) //存到当前系统下的路径
         
-        fs.readdir(newFile.meta.dataPath,(err,filesItem)=>{
-            if(err){
-                res.send({code:-1,message:'new file error!'})
-                return
-            }
-            let pathArr=[]
-            filesItem.forEach(v=>{
-                let obj={}
-                obj['name']=v
-                obj['path']=newFile.meta.currentPath+'/'+v
+        let p=new Promise((res,rej)=>{
 
-                pathArr.push(obj) 
+            fs.readdir(newFile.meta.dataPath,(err,filesItem)=>{
+
+                if(err){
+                    rej()
+                }else{
+                    let pathArr=[]
+                    filesItem.forEach(v=>{
+                        let obj={}
+                        obj['name']=v
+                        obj['path']=newFile.meta.currentPath+'/'+v
+
+                        pathArr.push(obj) 
+                    })
+                    newFile['currentPathFiles']=pathArr
+                    res()
+                }
+                
             })
-            newFile['currentPathFiles']=pathArr
         })
+       
 
-
-
-        Instances.findOne(query,(find_err,doc)=>{
+        p.then(()=>{
+            Instances.findOne(query,(find_err,doc)=>{
             if(find_err){
                 res.send({code:-1,message:'new file error!'})
                 return
@@ -290,6 +296,16 @@ exports.newFile=function(req,res,next){
                 })
             }
         })
+        },()=>{
+            res.send({code:-1,message:'new file error!'})
+            return
+        })
+
+        
+
+
+
+        
     })
   
     

@@ -365,14 +365,15 @@ exports.executePrcs = function (req, res, next) {
                           return
           }
           fs.readdir(output, (err, f_item) => {
-            if (f_item.length == 0) {
-              let msg = { code: -2, message: "processing methods error" };
-              if (pcs_stout != undefined) {
-                msg.message = pcs_stout.toString("utf-8");
-              }
-              res.end(JSON.stringify(msg));
-                          return
-            }
+            //考虑到可能处理方法会没有输出，所以先注释
+            // if (f_item.length == 0) {
+            //   let msg = { code: -2, message: "processing methods error" };
+            //   if (pcs_stout != undefined) {
+            //     msg.message = pcs_stout.toString("utf-8");
+            //   }
+            //   res.end(JSON.stringify(msg));
+            //               return
+            // }
             let bk_html = undefined;
             for (let f of f_item) {
               if (f.split(".")[1] == "html" && doc.type == "Visualization") {
