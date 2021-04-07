@@ -21,6 +21,8 @@ const geoProbems=require('../service/geoProblems.js')
 const indexService=require('../service/index.js');
 const systemRouter = require('../service/systemStateRouter.js')
 
+const depend = require('../service/depend.js')
+
 //接口不可用 
 //第一种接口上传数据到服务器
 exports.storageData=storageData.storage;
@@ -162,3 +164,7 @@ exports.indexPost=indexService.indexServicePost;
 
  exports.invokeProUrl = processing.invokeProUrl;
  exports.invokeProUrls = processing.invokeProUrls;
+//获取用户信息
+exports.getUserInfo = user.getUserInfo;
+
+exports.changePythonEnv = depend.changePythonEnv;

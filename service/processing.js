@@ -33,8 +33,11 @@ const WebSocket = require('ws');
 const getSize = require('get-folder-size');
 const { reject } = require("bluebird");
 const { Recoverable } = require("repl");
+const user = require("../model/user");
 // const { try } = require("bluebird");
 const my_dataContainer='http://221.226.60.2:8082/'
+
+const User = user.User;
 
 exports.newProcessing = function (req, res, next) {
   let script_uid = uuid.v4();
@@ -289,228 +292,238 @@ exports.bindProcessing = function (req, res, next) {
 };
 
 exports.executePrcs = function (req, res, next) {
-  instances.findOne({ "list.id": req.query.pcsId }, (err, doc) => {
-    if (err || !doc) {
-      res.send({ code: -1, message: "find error" });
+  let pythonExePath;
+  //从数据库获取python路径
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1, message:'User Not Exist!'})
       return;
-    }
-    let pcs_item;
-    for (const it of doc.list) {
-      if (it.id === req.query.pcsId) {
-        pcs_item = it;
-        break;
-      }
-    }
-    let pythonPath =
-      pcs_item.fileList[0].split(".")[1] === "py"
-        ? pcs_item.fileList[0]
-        : pcs_item.fileList[1];
-    let py_script_path = pcs_item.storagePath + "/" + pythonPath; //python脚本路径
-
-    instances.findOne({ "list.id": req.query.dataId }, (err, data_doc) => {
-      if (err || !data_doc) {
-        res.send({ code: -1, message: "find error" });
-        return;
-      }
-      let data_item;
-      for (const it of data_doc.list) {
-        if (it.id === req.query.dataId) {
-          data_item = it;
-          break;
-        }
-      }
-
-      let input = data_item.meta.currentPath;
-      input = path.normalize(input);
-      let forward = input.replace(/\\/g, "%5C");
-      input = forward.replace(/%5C/g, "/");
-
-      let pcs_re = uuid.v4();
-      let output = processing_result + "/" + pcs_re;
-      let mkdirPromise = fsPromises.mkdir(output);
-      output = path.normalize(output);
-      forward = output.replace(/\\/g, "%5C");
-      output = forward.replace(/%5C/g, "/");
-
-      mkdirPromise.then((v) => {
-        let par = [py_script_path, input, output];
-        //将参数数组填入
-        if (req.query.params != undefined && req.query.params != "") {
-          let r = req.query.params.split(",");
-          r.forEach((v) => {
-            par.push(v);
-          });
-        }
-        let pcs_stout = undefined;
-        const ls = cp.spawn(cfg.pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
-        ls.on("error", (err) => {
-          console.log(`错误 ${err}`);
-          res.send({ code: -2, message: err.toString() });
+    }else{
+      pythonExePath = doc.pythonEnv;
+      instances.findOne({ "list.id": req.query.pcsId }, (err, doc) => {
+        if (err || !doc) {
+          res.send({ code: -1, message: "find error" });
           return;
-        });
-        ls.on("close", (code) => {
-          //exit之后
-          console.log(`子进程close，退出码 ${code}`);
-        });
-        ls.stdout.on("data", (data) => {
-          console.log(`stdout: ${data}`);
-          pcs_stout = data;
-        });
-
-        ls.on("exit", (code) => {
-          console.log(`子进程使用代码 ${code} 退出`);
-          if (code != 0) {
-            let msg = { code: -2, message: "processing methods error" };
-            res.end(JSON.stringify(msg));
-                          return
+        }
+        let pcs_item;
+        for (const it of doc.list) {
+          if (it.id === req.query.pcsId) {
+            pcs_item = it;
+            break;
           }
-          fs.readdir(output, (err, f_item) => {
-            if (f_item.length == 0) {
-              let msg = { code: -2, message: "processing methods error" };
-              if (pcs_stout != undefined) {
-                msg.message = pcs_stout.toString("utf-8");
-              }
-              res.end(JSON.stringify(msg));
-                          return
+        }
+        let pythonPath =
+          pcs_item.fileList[0].split(".")[1] === "py"
+            ? pcs_item.fileList[0]
+            : pcs_item.fileList[1];
+        let py_script_path = pcs_item.storagePath + "/" + pythonPath; //python脚本路径
+    
+        instances.findOne({ "list.id": req.query.dataId }, (err, data_doc) => {
+          if (err || !data_doc) {
+            res.send({ code: -1, message: "find error" });
+            return;
+          }
+          let data_item;
+          for (const it of data_doc.list) {
+            if (it.id === req.query.dataId) {
+              data_item = it;
+              break;
             }
-            let bk_html = undefined;
-            for (let f of f_item) {
-              if (f.split(".")[1] == "html" && doc.type == "Visualization") {
-                bk_html = true;
-                break;
-              }
+          }
+    
+          let input = data_item.meta.currentPath;
+          input = path.normalize(input);
+          let forward = input.replace(/\\/g, "%5C");
+          input = forward.replace(/%5C/g, "/");
+    
+          let pcs_re = uuid.v4();
+          let output = processing_result + "/" + pcs_re;
+          let mkdirPromise = fsPromises.mkdir(output);
+          output = path.normalize(output);
+          forward = output.replace(/\\/g, "%5C");
+          output = forward.replace(/%5C/g, "/");
+    
+          mkdirPromise.then((v) => {
+            let par = [py_script_path, input, output];
+            //将参数数组填入
+            if (req.query.params != undefined && req.query.params != "") {
+              let r = req.query.params.split(",");
+              r.forEach((v) => {
+                par.push(v);
+              });
             }
-
-            let upObj = {
-              name: req.query.token,
-              userId: req.query.token,
-              origination: "distributedContainer",
-              serverNode: "china",
-              ogmsdata: [],
-            };
-            f_item.forEach((v) => {
-              upObj["ogmsdata"].push(fs.createReadStream(output + "/" + v));
+            let pcs_stout = undefined;
+            const ls = cp.spawn(pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
+            ls.on("error", (err) => {
+              console.log(`错误 ${err}`);
+              res.send({ code: -2, message: err.toString() });
+              return;
             });
-            let dataType = undefined;
-            f_item.forEach((v) => {
-              if (v.split(".")[1] === "shp") {
-                dataType = "shp";
-              } else if (
-                v.split(".")[1] === "tif" ||
-                v.split(".")[1] === "tiff"
-              ) {
-                dataType = "tiff";
-              }
+            ls.on("close", (code) => {
+              //exit之后
+              console.log(`子进程close，退出码 ${code}`);
             });
-            //拼接配置文件
-            let udxcfg =
-              cfg.configUdxCfg[0] + "\n" + cfg.configUdxCfg[1] + "\n";
-            for (let i = 0; i < f_item.length; i++) {
-              udxcfg += cfg.configUdxCfg[2] + "\n";
-            }
-            udxcfg += cfg.configUdxCfg[3] + "\n";
-            udxcfg += cfg.configUdxCfg[4] + "\n";
-            if (dataType === "shp") {
-              udxcfg += templateId.shp[0];
-            } else if (dataType == "tiff") {
-              udxcfg += templateId.tiff[0];
-            } else {
-              udxcfg += templateId.shp[0];
-            }
-            udxcfg += cfg.configUdxCfg[5] + "\n";
-            udxcfg += cfg.configUdxCfg[6] + "\n";
-
-            fs.writeFileSync(output + "/config.udxcfg", udxcfg);
-
-            upObj["ogmsdata"].push(
-              fs.createReadStream(output + "/config.udxcfg")
-            );
-
-            // 数据处理结果上传至数据服务器
-
-            // TODO: 处理结果较大时切片上传
-
-            getSize(output, (err, size) => {
-              if (err) { throw err; }
-              // 处理结果上传到数据容器，分300MB的阈值
-              if(size<314572800){
-                let options = {
-                  method: "POST",
-                  url: transitUrl + "/data",
-                  headers: { "Content-Type": "multipart/form-data" },
-                  formData: upObj,
-                };
-                //调用数据容器上传接口
-                let promise = new Promise((resolve, reject) => {
-                  let readStream = Request(options, (error, response, body) => {
-                    if (!error) {
-                      resolve({ response, body });
-                    } else {
-                      reject(error);
-                    }
-                  });
-                });
-                //返回数据下载id
-                promise.then(
-                  function (v) {
-                    //删除配置文件
-                    fs.unlinkSync(output + "/config.udxcfg", udxcfg);
-                    let r = JSON.parse(v.body);
-                    if (r.code == -1) {
-                      res.send({ code: -2, message: v.msg });
-                      return;
-                    } else {
-                      console.log(
-                        "insitu content data ",
-                        req.query.dataId,
-                        "process method",
-                        req.query.pcsId
-                      );
-                      let rs = {
-                        code: 0,
-                        uid: r.data.source_store_id,
-                        stout:
-                          pcs_stout != undefined
-                            ? pcs_stout.toString("utf-8")
-                            : undefined,
-                      };
-                      if (bk_html) {
-                        rs["html"] = true;
-                      }
-                      res.send(rs);
-                      return;
-                    }
-                  },
-                  (rej_err) => {
-                    console.log(rej_err);
+            ls.stdout.on("data", (data) => {
+              console.log(`stdout: ${data}`);
+              pcs_stout = data;
+            });
+    
+            ls.on("exit", (code) => {
+              console.log(`子进程使用代码 ${code} 退出`);
+              if (code != 0) {
+                let msg = { code: -2, message: "processing methods error" };
+                res.end(JSON.stringify(msg));
+                              return
+              }
+              fs.readdir(output, (err, f_item) => {
+                if (f_item.length == 0) {
+                  let msg = { code: -2, message: "processing methods error" };
+                  if (pcs_stout != undefined) {
+                    msg.message = pcs_stout.toString("utf-8");
                   }
+                  res.end(JSON.stringify(msg));
+                              return
+                }
+                let bk_html = undefined;
+                for (let f of f_item) {
+                  if (f.split(".")[1] == "html" && doc.type == "Visualization") {
+                    bk_html = true;
+                    break;
+                  }
+                }
+    
+                let upObj = {
+                  name: req.query.token,
+                  userId: req.query.token,
+                  origination: "distributedContainer",
+                  serverNode: "china",
+                  ogmsdata: [],
+                };
+                f_item.forEach((v) => {
+                  upObj["ogmsdata"].push(fs.createReadStream(output + "/" + v));
+                });
+                let dataType = undefined;
+                f_item.forEach((v) => {
+                  if (v.split(".")[1] === "shp") {
+                    dataType = "shp";
+                  } else if (
+                    v.split(".")[1] === "tif" ||
+                    v.split(".")[1] === "tiff"
+                  ) {
+                    dataType = "tiff";
+                  }
+                });
+                //拼接配置文件
+                let udxcfg =
+                  cfg.configUdxCfg[0] + "\n" + cfg.configUdxCfg[1] + "\n";
+                for (let i = 0; i < f_item.length; i++) {
+                  udxcfg += cfg.configUdxCfg[2] + "\n";
+                }
+                udxcfg += cfg.configUdxCfg[3] + "\n";
+                udxcfg += cfg.configUdxCfg[4] + "\n";
+                if (dataType === "shp") {
+                  udxcfg += templateId.shp[0];
+                } else if (dataType == "tiff") {
+                  udxcfg += templateId.tiff[0];
+                } else {
+                  udxcfg += templateId.shp[0];
+                }
+                udxcfg += cfg.configUdxCfg[5] + "\n";
+                udxcfg += cfg.configUdxCfg[6] + "\n";
+    
+                fs.writeFileSync(output + "/config.udxcfg", udxcfg);
+    
+                upObj["ogmsdata"].push(
+                  fs.createReadStream(output + "/config.udxcfg")
                 );
-              }else{
-                // 处理结果大于300MB时
-
-                fs.readFile()
-
-
-
-              }
-           
-
-
-
-            })
-
-            
-
-
-
-
-
-
+    
+                // 数据处理结果上传至数据服务器
+    
+                // TODO: 处理结果较大时切片上传
+    
+                getSize(output, (err, size) => {
+                  if (err) { throw err; }
+                  // 处理结果上传到数据容器，分300MB的阈值
+                  if(size<314572800){
+                    let options = {
+                      method: "POST",
+                      url: transitUrl + "/data",
+                      headers: { "Content-Type": "multipart/form-data" },
+                      formData: upObj,
+                    };
+                    //调用数据容器上传接口
+                    let promise = new Promise((resolve, reject) => {
+                      let readStream = Request(options, (error, response, body) => {
+                        if (!error) {
+                          resolve({ response, body });
+                        } else {
+                          reject(error);
+                        }
+                      });
+                    });
+                    //返回数据下载id
+                    promise.then(
+                      function (v) {
+                        //删除配置文件
+                        fs.unlinkSync(output + "/config.udxcfg", udxcfg);
+                        let r = JSON.parse(v.body);
+                        if (r.code == -1) {
+                          res.send({ code: -2, message: v.msg });
+                          return;
+                        } else {
+                          console.log(
+                            "insitu content data ",
+                            req.query.dataId,
+                            "process method",
+                            req.query.pcsId
+                          );
+                          let rs = {
+                            code: 0,
+                            uid: r.data.source_store_id,
+                            stout:
+                              pcs_stout != undefined
+                                ? pcs_stout.toString("utf-8")
+                                : undefined,
+                          };
+                          if (bk_html) {
+                            rs["html"] = true;
+                          }
+                          res.send(rs);
+                          return;
+                        }
+                      },
+                      (rej_err) => {
+                        console.log(rej_err);
+                      }
+                    );
+                  }else{
+                    // 处理结果大于300MB时
+    
+                    fs.readFile()
+    
+    
+    
+                  }
+               
+    
+    
+    
+                })
+    
+                
+    
+    
+    
+    
+    
+    
+              });
+            });
           });
         });
       });
-    });
-  });
+    }
+  })
 };
 
 exports.chsdtne = function (req, res, next) {
@@ -854,6 +867,16 @@ exports.availableServices = function (req, res, next) {
 };
 
 exports.exeWithOtherData = function (req, res, next) {
+  let pythonExePath;
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1,message:'User Is Not Exist!'});
+      return;
+    }else{
+      pythonExePath = doc.pythonEnv;
+    }
+  })
+
   let dataIdinCont = req.query.contDtId;
 
   let downLoadUrl = transitUrl + "/data?uid=" + dataIdinCont;
@@ -955,7 +978,7 @@ exports.exeWithOtherData = function (req, res, next) {
                   });
                 }
                 let pcs_stout = undefined;
-                const ls = cp.spawn(cfg.pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
+                const ls = cp.spawn(pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
 
                 ls.on("exit", (code) => {
                   console.log(`子进程使用代码 ${code} 退出`);
@@ -1156,7 +1179,7 @@ exports.exeWithOtherData = function (req, res, next) {
                     });
                   }
                   let pcs_stout = undefined;
-                  const ls = cp.spawn(cfg.pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
+                  const ls = cp.spawn(pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
 
                   ls.on("exit", (code) => {
                     console.log(`子进程使用代码 ${code} 退出`);
@@ -1473,6 +1496,16 @@ exports.executeSaga = function (req, res, next) {
  * @param {回调参数} res
  */
 exports.invokeProUrl = function (req, res, next) {
+  let pythonExePath;
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1,message:'User Is Not Exist!'});
+      return;
+    }else{
+      pythonExePath = doc.pythonEnv;
+    }
+  })
+
   let uid = uuid.v4();
   console.log(req.body);
 
@@ -1567,7 +1600,7 @@ exports.invokeProUrl = function (req, res, next) {
                   });
                 }
                 let pcs_stout = undefined;
-                const ls = cp.spawn(cfg.pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
+                const ls = cp.spawn(pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
 
                 ls.on("exit", (code) => {
                   console.log(`子进程使用代码 ${code} 退出`);
@@ -1748,7 +1781,7 @@ exports.invokeProUrl = function (req, res, next) {
               });
             }
             let pcs_stout = undefined;
-            const ls = cp.spawn(cfg.pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
+            const ls = cp.spawn(pythonExePath, par); //python安装路径，python脚本路径，shp路径，照片结果路径
 
             ls.on("exit", (code) => {
               console.log(`子进程使用代码 ${code} 退出`);
@@ -1889,6 +1922,16 @@ exports.invokeProUrl = function (req, res, next) {
 };
 
 exports.invokeProUrls = function(req,res,next){
+  let pythonExePath;
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1,message:'User Is Not Exist!'});
+      return;
+    }else{
+      pythonExePath = doc.pythonEnv;
+    }
+  })
+
   let uid = uuid.v4();
   console.log(req.body);
 try{
@@ -1969,7 +2012,7 @@ try{
                       })
                   }
                   let pcs_stout=undefined
-                  const ls = cp.spawn(cfg.pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
+                  const ls = cp.spawn(pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
                   
                   ls.on('exit', (code) => {
                       console.log(`子进程使用代码 ${code} 退出`);
@@ -2204,6 +2247,16 @@ function uploadMultifiles(path,name){
 
 }
 exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
+  let pythonExePath;
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1,message:'User Is Not Exist!'});
+      return;
+    }else{
+      pythonExePath = doc.pythonEnv;
+    }
+  })
+
     let uid = uuid.v4();
     console.log(req.body);
     let recordIdForThisRun=uuid.v4()
@@ -2292,7 +2345,7 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                         par=par.concat(req.body.params)
                       }
                       let pcs_stout=undefined
-                      const ls = cp.spawn(cfg.pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
+                      const ls = cp.spawn(pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
                       
                       ls.on('exit', (code) => {
                           console.log(`子进程使用代码 ${code} 退出`);
@@ -2450,8 +2503,13 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
                                 }))
 
                               },(err)=>{
-                                res.send({code:-2,message:v.msg});
-                                      return
+                                if(!v.msg){
+                                  res.send({code:-2, message:'none'})
+                                  return;
+                                }else{
+                                  res.send({code:-2,message:v.msg});
+                                  return
+                                }     
                               })
                               
 
@@ -2517,7 +2575,15 @@ exports.invokeExternalUrlsDataPcsWithKeys=function(req,res){
 
 // 执行外部数据
 exports.invokeExternalUrlsDataPcs=function(req,res,next){
-
+  let pythonExePath;
+  User.findOne({name:'admin'},(err,doc)=>{
+    if(!doc){
+      res.send({code:-1,message:'User Is Not Exist!'});
+      return;
+    }else{
+      pythonExePath = doc.pythonEnv;
+    }
+  })
   let urls=JSON.parse(req.body.ExternalUrls)
   let pid=req.body.pcsId
   let params=req.body.params
@@ -2591,7 +2657,7 @@ exports.invokeExternalUrlsDataPcs=function(req,res,next){
                 })
             }
             let pcs_stout=undefined
-            const ls = cp.spawn(cfg.pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
+            const ls = cp.spawn(pythonExePath, par);//python安装路径，python脚本路径，shp路径，照片结果路径
 
             // 'd:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.shp,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.dbf,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.shx,d:\\Projects\\transitDataServer\\urlFile\\e2a03136-ac07-4450-9ca9-e661dacc8ba5\\testç¹æ®ç¬¦å·.prj'
             ls.on('exit', (code) => {

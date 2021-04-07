@@ -245,6 +245,11 @@ app.get('/state', function (req, res) {
 })
 
 // curl -L ip.tool.lu
+//获取用户信息
+app.get('/getUserInfo', router.getUserInfo)
+
+//换绑python环境
+app.post('/changePythonEnv', router.changePythonEnv);
 
 
 
