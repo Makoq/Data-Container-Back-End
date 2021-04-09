@@ -21,6 +21,8 @@ var jsonParser = bodyParser.json();
 var urlencodedParser = bodyParser.urlencoded({extended: false});
 app.use(bodyParser.urlencoded({ extended: false }));
 
+//vue静态资源存放位置
+app.use(express.static('public'))
 
 //CORS跨域设置
 app.all('*', function (req, res, next) {
